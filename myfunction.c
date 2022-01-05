@@ -1,6 +1,9 @@
 #include <stdbool.h> 
 
 #define IMG_SIZE 3*m*n
+#define min(a,b)  (a < b ? a : b)
+#define max(a,b)  (a > b ? a : b)
+#define LOCATION(i,n,j) ((i)*(n)+(j))
 typedef struct {
    unsigned char red;
    unsigned char green;
@@ -16,8 +19,8 @@ typedef struct {
 
 
 /* Compute min and max of two integers, respectively */
-int min(int a, int b) { return (a < b ? a : b); }
-int max(int a, int b) { return (a > b ? a : b); }
+//int min(int a, int b) { return (a < b ? a : b); }
+//int max(int a, int b) { return (a > b ? a : b); }
 
 int calcIndex(int i, int j, int n) {
 	return ((i)*(n)+(j));
@@ -140,15 +143,19 @@ static pixel applyKernel(int dim, int i, int j, pixel *src, int kernelSize, int 
 * column index smaller than kernelSize/2
 */
 void smoothBlurNoFilter(int dim, pixel *src, pixel *dst) {
-    int dimLoop =dim-1; /// maybe in a different way
-    for (int i = 1 ; i < dimLoop; i++) {
-        for (int j =  1 ; j < dimLoop; j++) {
+    //int dimLoop =dim-1;
+    int dimLoop =m-1;
+    int i,j;
+    for (i = 1 ; i < dimLoop; i++) {
+        for (j =  1 ; j < dimLoop; j++) {
             int location = calcIndex(i, j, dim);
             pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
+            int k;
             // sum all pixels around current pixel:
-            for (int k = i-1; k <= i+1; ++k) { // for a row in src
-                int currLoc = k*dim +j; //not sure about it - we can do with the func calcIndex
+            for (k = i-1; k <= i+1; ++k) { // for a row in src
+                int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
+                //int currLoc = LOCATION(k,dim,j);
                 sum.red += src[currLoc-1].red;
                 sum.red += src[currLoc].red;
                 sum.red += src[currLoc+1].red;
@@ -168,16 +175,18 @@ void smoothBlurNoFilter(int dim, pixel *src, pixel *dst) {
 
 void smoothBlurWithFilter(int dim, pixel *src, pixel *dst) {
     int dimLoop =dim-1; /// maybe in a different way
-    for (int i = 1 ; i < dimLoop; i++) {
-        for (int j =  1 ; j < dimLoop; j++) {
+    int i,j;
+    for (i = 1 ; i < dimLoop; i++) {
+        for (j =  1 ; j < dimLoop; j++) {
             int location = calcIndex(i, j, dim);
             pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
-            int sumTotal, minRow, maxRow, minCol, maxCol;
+            int maxi = 776, mini = -1;
+            int sumTotal, minRow, maxRow, minCol, maxCol,k;
             // sum all pixels around current pixel:
-            for (int k = i-1; k <= i+1; ++k) { // for a row in src
+            for (k = i-1; k <= i+1; ++k) { // for a row in src
                 int currLoc = k*dim +j; //not sure about it - we can do with the func calcIndex
-                int maxi = 776, mini = -1;
+                //int currLoc = LOCATION(k,dim,j);
 
                 sum.red += src[currLoc-1].red;
                 sum.green += src[currLoc-1].green;
@@ -185,11 +194,11 @@ void smoothBlurWithFilter(int dim, pixel *src, pixel *dst) {
                 sumTotal = (int) (src[currLoc-1].red + src[currLoc-1].green + src[currLoc-1].blue);
                 if (sumTotal <= maxi) {
                     maxi = sumTotal;
-                    maxRow = k, maxCol = 0; // zero contains?
+                    maxRow = k, maxCol = j-1;
                 }
                 if (sumTotal > mini) {
                     mini = sumTotal;
-                    minRow = k, minCol = 0;
+                    minRow = k, minCol = j-1;
                 }
 
                 sum.red += src[currLoc].red;
@@ -198,11 +207,11 @@ void smoothBlurWithFilter(int dim, pixel *src, pixel *dst) {
                 sumTotal = (int) (src[currLoc].red + src[currLoc].green + src[currLoc].blue);
                 if (sumTotal <= maxi) {
                     maxi = sumTotal;
-                    maxRow = k, maxCol = 1;
+                    maxRow = k, maxCol = j;
                 }
                 if (sumTotal > mini) {
                     mini = sumTotal;
-                    minRow = k, minCol = 1;
+                    minRow = k, minCol = j;
                 }
 
                 sum.red += src[currLoc+1].red;
@@ -211,21 +220,21 @@ void smoothBlurWithFilter(int dim, pixel *src, pixel *dst) {
                 sumTotal = (int) (src[currLoc+1].red + src[currLoc+1].green + src[currLoc+1].blue);
                 if (sumTotal <= maxi) {
                     maxi = sumTotal;
-                    maxRow = k, maxCol = 1;
+                    maxRow = k, maxCol = j+1;
                 }
                 if (sumTotal > mini) {
                     mini = sumTotal;
-                    minRow = k, minCol = 2;
+                    minRow = k, minCol = j+1;
                 }
             }
             int minLoc = minRow*dim +minCol;
             int maxLoc = maxRow*dim +maxCol;
-            int temp = src[minLoc].red + src[maxLoc].red;
-            sum.red += (-1) * temp;
-            temp = src[minLoc].green + src[maxLoc].green;
-            sum.green += (-1) * temp;
-            temp = src[minLoc].blue + src[maxLoc].blue;
-            sum.blue += (-1) * temp;
+            sum.red += (-1) * src[minLoc].red;
+            sum.green += (-1) * src[minLoc].green;
+            sum.blue += (-1) * src[minLoc].blue;
+            sum.red += (-1) * src[maxLoc].red;
+            sum.green += (-1) * src[maxLoc].green;
+            sum.blue += (-1) * src[maxLoc].blue;
 
             dst[location].red = sum.red /7;
             dst[location].green = sum.green /7;
@@ -236,13 +245,14 @@ void smoothBlurWithFilter(int dim, pixel *src, pixel *dst) {
 
 void smoothSharpNoFilter(int dim, pixel *src, pixel *dst) {
     int dimLoop =dim-1; /// maybe in a different way
-    for (int i = 1 ; i < dimLoop; i++) {
-        for (int j =  1 ; j < dimLoop; j++) {
+    int i,j,k;
+    for (i = 1 ; i < dimLoop; i++) {
+        for (j =  1 ; j < dimLoop; j++) {
             int location = calcIndex(i, j, dim);
             pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
             // sum all pixels around current pixel:
-            for (int k = i-1; k <= i+1; k+=2) { // for a row in src-  2 rows- first and last (1,3)
+            for (k = i-1; k <= i+1; k+=2) { // for a row in src-  2 rows- first and last (1,3)
                 int currLoc = k*dim +j; //not sure about it - we can do with the func calcIndex
                 sum.red += src[currLoc-1].red;
                 sum.green += src[currLoc-1].green;
@@ -336,8 +346,6 @@ void doConvolution(Image *image, int kernelSize, int kernel[kernelSize][kernelSi
 
     charsToPixels(image, pixelsImg);
     copyPixels(pixelsImg, backupOrg);
-    //memcpy(pixelsImg, image->data, m*n*3);
-    //memcpy(backupOrg, pixelsImg, m*n*3);
 
     smooth(m, backupOrg, pixelsImg, kernelSize, kernel, kernelScale, filter);
 
@@ -397,45 +405,27 @@ void doConvolutionSharp(Image *image) {
 }
 
 void myfunction(Image *image, char* srcImgpName, char* blurRsltImgName, char* sharpRsltImgName, char* filteredBlurRsltImgName, char* filteredSharpRsltImgName, char flag) {
-
-	/*
-	* [1, 1, 1]
-	* [1, 1, 1]
-	* [1, 1, 1]
-	*/
-	int blurKernel[3][3] = {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}};
-
-	/*
-	* [-1, -1, -1]
-	* [-1, 9, -1]
-	* [-1, -1, -1]
-	*/
-	int sharpKernel[3][3] = {{-1,-1,-1},{-1,9,-1},{-1,-1,-1}};
-
-	if (flag == '1') {	
+    if (flag == '1') {
 		// blur image
 		doConvolutionBlurNoFilter(image);
-        //doConvolution(image, 3, blurKernel, 9, false);
 
 		// write result image to file
 		writeBMP(image, srcImgpName, blurRsltImgName);	
 
 		// sharpen the resulting image
         doConvolutionSharp(image);
-		//doConvolution(image, 3, sharpKernel, 1, false);
 		
 		// write result image to file
 		writeBMP(image, srcImgpName, sharpRsltImgName);	
 	} else {
 		// apply extermum filtered kernel to blur image
-		doConvolution(image, 3, blurKernel, 7, true);
+        doConvolutionBlurWithFilter(image);
 
 		// write result image to file
 		writeBMP(image, srcImgpName, filteredBlurRsltImgName);
 
 		// sharpen the resulting image
         doConvolutionSharp(image);
-		//doConvolution(image, 3, sharpKernel, 1, false);
 
 		// write result image to file
 		writeBMP(image, srcImgpName, filteredSharpRsltImgName);	
