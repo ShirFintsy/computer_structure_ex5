@@ -3,7 +3,7 @@
 #define IMG_SIZE 3*m*n
 #define min(a,b)  (a < b ? a : b)
 #define max(a,b)  (a > b ? a : b)
-#define LOCATION(i,n,j) ((i)*(n)+(j))
+#define LOCATION(i,j,n) (i*n+j)
 typedef struct {
    unsigned char red;
    unsigned char green;
@@ -14,7 +14,6 @@ typedef struct {
     int red;
     int green;
     int blue;
-    // int num;
 } pixel_sum;
 
 
@@ -142,20 +141,21 @@ static pixel applyKernel(int dim, int i, int j, pixel *src, int kernelSize, int 
 * Ignore pixels where the kernel exceeds bounds. These are pixels with row index smaller than kernelSize/2 and/or
 * column index smaller than kernelSize/2
 */
-void smoothBlurNoFilter(int dim, pixel *src, pixel *dst) {
+void smoothBlurNoFilter(pixel *src, pixel *dst) {
     //int dimLoop =dim-1;
     int dimLoop =m-1;
     int i,j;
     for (i = 1 ; i < dimLoop; i++) {
         for (j =  1 ; j < dimLoop; j++) {
-            int location = calcIndex(i, j, dim);
+            //int location = calcIndex(i, j, m);
+            int location = LOCATION(i,j,m);
             pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
             int k;
             // sum all pixels around current pixel:
             for (k = i-1; k <= i+1; ++k) { // for a row in src
-                int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
-                //int currLoc = LOCATION(k,dim,j);
+                //int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
+                int currLoc = LOCATION(k,j,m);
                 sum.red += src[currLoc-1].red;
                 sum.red += src[currLoc].red;
                 sum.red += src[currLoc+1].red;
@@ -169,24 +169,28 @@ void smoothBlurNoFilter(int dim, pixel *src, pixel *dst) {
             dst[location].red = sum.red /9;
             dst[location].green = sum.green /9;
             dst[location].blue = sum.blue /9;
+//            dst[location].red = sum.red * 0.1111111111;
+//            dst[location].green = sum.green * 0.1111111111;
+//            dst[location].blue = sum.blue * 0.1111111111;
         }
     }
 }
 
-void smoothBlurWithFilter(int dim, pixel *src, pixel *dst) {
-    int dimLoop =dim-1; /// maybe in a different way
+void smoothBlurWithFilter(pixel *src, pixel *dst) {
+    int dimLoop =m-1; /// maybe in a different way
     int i,j;
     for (i = 1 ; i < dimLoop; i++) {
         for (j =  1 ; j < dimLoop; j++) {
-            int location = calcIndex(i, j, dim);
+            int location = LOCATION(i, j, m);
+            //int location = calcIndex(i, j, m);
             pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
             int maxi = 776, mini = -1;
             int sumTotal, minRow, maxRow, minCol, maxCol,k;
             // sum all pixels around current pixel:
             for (k = i-1; k <= i+1; ++k) { // for a row in src
-                int currLoc = k*dim +j; //not sure about it - we can do with the func calcIndex
-                //int currLoc = LOCATION(k,dim,j);
+                //int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
+                int currLoc = LOCATION(k,j,m);
 
                 sum.red += src[currLoc-1].red;
                 sum.green += src[currLoc-1].green;
@@ -227,33 +231,34 @@ void smoothBlurWithFilter(int dim, pixel *src, pixel *dst) {
                     minRow = k, minCol = j+1;
                 }
             }
-            int minLoc = minRow*dim +minCol;
-            int maxLoc = maxRow*dim +maxCol;
+            int minLoc = minRow*m +minCol;
+            int maxLoc = maxRow*m +maxCol;
             sum.red += (-1) * src[minLoc].red;
             sum.green += (-1) * src[minLoc].green;
             sum.blue += (-1) * src[minLoc].blue;
             sum.red += (-1) * src[maxLoc].red;
             sum.green += (-1) * src[maxLoc].green;
             sum.blue += (-1) * src[maxLoc].blue;
-
-            dst[location].red = sum.red /7;
-            dst[location].green = sum.green /7;
-            dst[location].blue = sum.blue /7;
+            //divide by 7:
+            dst[location].red = sum.red * 0.1428571429;
+            dst[location].green = sum.green * 0.1428571429;
+            dst[location].blue = sum.blue * 0.1428571429;
         }
     }
 }
 
-void smoothSharpNoFilter(int dim, pixel *src, pixel *dst) {
-    int dimLoop =dim-1; /// maybe in a different way
+void smoothSharpNoFilter(pixel *src, pixel *dst) {
+    int dimLoop =m-1; /// maybe in a different way
     int i,j,k;
     for (i = 1 ; i < dimLoop; i++) {
         for (j =  1 ; j < dimLoop; j++) {
-            int location = calcIndex(i, j, dim);
+            int location = LOCATION(i, j, m);
             pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
             // sum all pixels around current pixel:
             for (k = i-1; k <= i+1; k+=2) { // for a row in src-  2 rows- first and last (1,3)
-                int currLoc = k*dim +j; //not sure about it - we can do with the func calcIndex
+                int currLoc = LOCATION(k,j,m);
+                //int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
                 sum.red += src[currLoc-1].red;
                 sum.green += src[currLoc-1].green;
                 sum.blue +=  src[currLoc-1].blue;
@@ -271,7 +276,7 @@ void smoothSharpNoFilter(int dim, pixel *src, pixel *dst) {
             sum.green *= (-1);
             sum.blue *= (-1);
             //add the middle row to sum:
-            int currLoc = i*dim +j;
+            int currLoc = LOCATION(i,j,m);
             sum.red += (-1) * src[currLoc-1].red;
             sum.green += (-1) * src[currLoc-1].green;
             sum.blue += (-1) * src[currLoc-1].blue;
@@ -364,7 +369,7 @@ void doConvolutionBlurNoFilter(Image *image) {
     memcpy(pixelsImg, image->data, IMG_SIZE);
     memcpy(backupOrg, pixelsImg, IMG_SIZE);
 
-    smoothBlurNoFilter(m, backupOrg, pixelsImg);
+    smoothBlurNoFilter(backupOrg, pixelsImg);
 
     memcpy(image->data, pixelsImg, IMG_SIZE);
 
@@ -380,7 +385,7 @@ void doConvolutionBlurWithFilter(Image *image) {
     memcpy(pixelsImg, image->data, IMG_SIZE);
     memcpy(backupOrg, pixelsImg, IMG_SIZE);
 
-    smoothBlurWithFilter(m, backupOrg, pixelsImg);
+    smoothBlurWithFilter(backupOrg, pixelsImg);
 
     memcpy(image->data, pixelsImg, IMG_SIZE);
 
@@ -389,14 +394,15 @@ void doConvolutionBlurWithFilter(Image *image) {
 }
 
 void doConvolutionSharp(Image *image) {
-    pixel* pixelsImg = malloc(m*n*sizeof(pixel));
-    pixel* backupOrg = malloc(m*n*sizeof(pixel));
+    int picSize = m*n*sizeof(pixel);
+    pixel* pixelsImg = malloc(picSize);
+    pixel* backupOrg = malloc(picSize);
 
     //coping image:
     memcpy(pixelsImg, image->data, IMG_SIZE);
     memcpy(backupOrg, pixelsImg, IMG_SIZE);
 
-    smoothSharpNoFilter(m, backupOrg, pixelsImg);
+    smoothSharpNoFilter(backupOrg, pixelsImg);
 
     memcpy(image->data, pixelsImg, IMG_SIZE);
 
@@ -404,7 +410,8 @@ void doConvolutionSharp(Image *image) {
     free(backupOrg);
 }
 
-void myfunction(Image *image, char* srcImgpName, char* blurRsltImgName, char* sharpRsltImgName, char* filteredBlurRsltImgName, char* filteredSharpRsltImgName, char flag) {
+void myfunction(Image *image, char* srcImgpName, char* blurRsltImgName, char* sharpRsltImgName,
+                char* filteredBlurRsltImgName, char* filteredSharpRsltImgName, char flag) {
     if (flag == '1') {
 		// blur image
 		doConvolutionBlurNoFilter(image);
