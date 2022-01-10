@@ -1,13 +1,14 @@
-#include <stdbool.h> 
+#include <stdbool.h>
 
 #define IMG_SIZE 3*m*n
 #define min(a,b)  (a < b ? a : b)
 #define max(a,b)  (a > b ? a : b)
 #define LOCATION(i,j,n) (i*n+j)
+
 typedef struct {
-   unsigned char red;
-   unsigned char green;
-   unsigned char blue;
+    unsigned char red;
+    unsigned char green;
+    unsigned char blue;
 } pixel;
 
 typedef struct {
@@ -17,185 +18,99 @@ typedef struct {
 } pixel_sum;
 
 
-/* Compute min and max of two integers, respectively */
-//int min(int a, int b) { return (a < b ? a : b); }
-//int max(int a, int b) { return (a > b ? a : b); }
+int calcIndex(int i, int j, int n) {}
 
-int calcIndex(int i, int j, int n) {
-	return ((i)*(n)+(j));
-}
+void initialize_pixel_sum(pixel_sum *sum) {}
 
-/*
- * initialize_pixel_sum - Initializes all fields of sum to 0
- */
-void initialize_pixel_sum(pixel_sum *sum) {
-	sum->red = sum->green = sum->blue = 0;
-	// sum->num = 0;
-	return;
-}
+static void assign_sum_to_pixel(pixel *current_pixel, pixel_sum sum, int kernelScale) {}
 
-/*
- * assign_sum_to_pixel - Truncates pixel's new value to match the range [0,255]
- */
-static void assign_sum_to_pixel(pixel *current_pixel, pixel_sum sum, int kernelScale) { //divied by 9 or 7 and copy sum to current pixel
+static void sum_pixels_by_weight(pixel_sum *sum, pixel p, int weight) {}
 
-	// divide by kernel's weight
-	sum.red = sum.red / kernelScale;
-	sum.green = sum.green / kernelScale;
-	sum.blue = sum.blue / kernelScale;
-
-	// truncate each pixel's color values to match the range [0,255]
-	current_pixel->red = (unsigned char) (min(max(sum.red, 0), 255));
-	current_pixel->green = (unsigned char) (min(max(sum.green, 0), 255));
-	current_pixel->blue = (unsigned char) (min(max(sum.blue, 0), 255));
-	return;
-}
-
-/*
-* sum_pixels_by_weight - Sums pixel values, scaled by given weight
-*/
-static void sum_pixels_by_weight(pixel_sum *sum, pixel p, int weight) { // add to sum the pixel
-	sum->red += ((int) p.red) * weight;
-	sum->green += ((int) p.green) * weight;
-	sum->blue += ((int) p.blue) * weight;
-	// sum->num++;
-	return;
-}
-
-/*
- *  Applies kernel for pixel at (i,j)
- */
-static pixel applyKernel(int dim, int i, int j, pixel *src, int kernelSize, int kernel[kernelSize][kernelSize], int kernelScale, bool filter) {
-
-    int ii, jj;
-    int currRow, currCol;
-    pixel_sum sum;
-    pixel current_pixel;
-    int min_intensity = 766; // arbitrary value that is higher than maximum possible intensity, which is 255*3=765
-    int max_intensity = -1; // arbitrary value that is lower than minimum possible intensity, which is 0
-    int min_row, min_col, max_row, max_col;
-    pixel loop_pixel;
-
-    initialize_pixel_sum(&sum);
-
-    for(ii = max(i-1, 0); ii <= min(i+1, dim-1); ii++) {
-        for(jj = max(j-1, 0); jj <= min(j+1, dim-1); jj++) {
-
-            int kRow, kCol;
-
-            // compute row index in kernel
-            if (ii < i) {
-                kRow = 0;
-            } else if (ii > i) {
-                kRow = 2;
-            } else {
-                kRow = 1;
-            }
-
-            // compute column index in kernel
-            if (jj < j) {
-                kCol = 0;
-            } else if (jj > j) {
-                kCol = 2;
-            } else {
-                kCol = 1;
-            }
-
-            // apply kernel on pixel at [ii,jj]
-            sum_pixels_by_weight(&sum, src[calcIndex(ii, jj, dim)], kernel[kRow][kCol]);
-        }
-    }
-
-    if (filter) {
-        // find min and max coordinates
-        for(ii = max(i-1, 0); ii <= min(i+1, dim-1); ii++) {
-            for(jj = max(j-1, 0); jj <= min(j+1, dim-1); jj++) {
-                // check if smaller than min or higher than max and update
-                loop_pixel = src[calcIndex(ii, jj, dim)];
-                if ((((int) loop_pixel.red) + ((int) loop_pixel.green) + ((int) loop_pixel.blue)) <= min_intensity) {
-                    min_intensity = (((int) loop_pixel.red) + ((int) loop_pixel.green) + ((int) loop_pixel.blue));
-                    min_row = ii;
-                    min_col = jj;
-                }
-                if ((((int) loop_pixel.red) + ((int) loop_pixel.green) + ((int) loop_pixel.blue)) > max_intensity) {
-                    max_intensity = (((int) loop_pixel.red) + ((int) loop_pixel.green) + ((int) loop_pixel.blue));
-                    max_row = ii;
-                    max_col = jj;
-                }
-            }
-        }
-        // filter out min and max
-        sum_pixels_by_weight(&sum, src[calcIndex(min_row, min_col, dim)], -1);
-        sum_pixels_by_weight(&sum, src[calcIndex(max_row, max_col, dim)], -1);
-    }
-
-    // assign kernel's result to pixel at [i,j]
-    assign_sum_to_pixel(&current_pixel, sum, kernelScale);
-    return current_pixel;
-}
+static pixel applyKernel(int dim, int i, int j, pixel *src, int kernelSize, int kernel[kernelSize][kernelSize], int kernelScale, bool filter) {}
 
 
 
 /*
-* Apply the kernel over each pixel.
-* Ignore pixels where the kernel exceeds bounds. These are pixels with row index smaller than kernelSize/2 and/or
-* column index smaller than kernelSize/2
+* The smooth function that blur the image if the command is 1- no filter.
+ * Optimization explanations: (1) use "register" before int/pixel to tell the computer to put this member in register
+ * and not to call it from memory every time.
+ * (2) few less arguments to this function because the others are pixed (not changing trought all project in this state-
+ * blur with no filter).
+ * (3) not using help function- to save call in assembly.
 */
 void smoothBlurNoFilter(pixel *src, pixel *dst) {
-    //int dimLoop =dim-1;
-    int dimLoop =m-1;
-    int i,j;
+    register int dimLoop =m-1;
+    register int i,j;
+    // check every pixel in separate:
     for (i = 1 ; i < dimLoop; i++) {
         for (j =  1 ; j < dimLoop; j++) {
-            //int location = calcIndex(i, j, m);
-            int location = LOCATION(i,j,m);
-            pixel_sum sum;
+            register int location = LOCATION(i,j,m); // use define to do this calculte instead of every location.
+            register pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
-            int k;
+            register int k;
             // sum all pixels around current pixel:
+            // for a row in src- one loop for rows- the columns checks inside (because there are only 3):
             for (k = i-1; k <= i+1; ++k) { // for a row in src
-                //int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
-                int currLoc = LOCATION(k,j,m);
-                sum.red += src[currLoc-1].red;
-                sum.red += src[currLoc].red;
-                sum.red += src[currLoc+1].red;
-                sum.green += src[currLoc-1].green;
-                sum.green += src[currLoc].green;
-                sum.green += src[currLoc+1].green;
-                sum.blue += src[currLoc-1].blue;
-                sum.blue += src[currLoc].blue;
-                sum.blue += src[currLoc+1].blue;
+                // use define to do this calculte instead of every location:
+                register int currLoc = LOCATION(k,j,m);
+                // go local to these pixels instead of reaching from memory every time:
+                register pixel p1 =  src[currLoc-1];
+                register pixel p2 =  src[currLoc];
+                register pixel p3 =  src[currLoc+1];
+
+                sum.red += p1.red;
+                sum.green += p1.green;
+                sum.blue += p1.blue;
+
+                sum.red += p2.red;
+                sum.green += p2.green;
+                sum.blue += p2.blue;
+
+                sum.red += p3.red;
+                sum.green += p3.green;
+                sum.blue += p3.blue;
             }
-            dst[location].red = sum.red /9;
-            dst[location].green = sum.green /9;
-            dst[location].blue = sum.blue /9;
-//            dst[location].red = sum.red * 0.1111111111;
-//            dst[location].green = sum.green * 0.1111111111;
-//            dst[location].blue = sum.blue * 0.1111111111;
+            //there is no need to fin min max because the result will always be that- every pixel is between 0 and 255.
+            dst[location].red = sum.red / 9;
+            dst[location].green = sum.green / 9;
+            dst[location].blue = sum.blue / 9;
         }
     }
 }
 
+/*
+* The smooth function that blur the image if the command is not 1- with filter.
+ * Optimization explanations: (1) use "register" before int/pixel to tell the computer to put this member in register
+ * and not to call it from memory every time.
+ * (2) few less arguments to this function because the others are pixed (not changing trought all project in this state-
+ * blur with no filter).
+ * (3) not using help function- to save call in assembly.
+*/
 void smoothBlurWithFilter(pixel *src, pixel *dst) {
-    int dimLoop =m-1; /// maybe in a different way
-    int i,j;
+    register int dimLoop =m-1;
+    register int i,j;
+    // check every pixel in separate:
     for (i = 1 ; i < dimLoop; i++) {
         for (j =  1 ; j < dimLoop; j++) {
-            int location = LOCATION(i, j, m);
-            //int location = calcIndex(i, j, m);
+            register int location = LOCATION(i, j, m);  // use define to do this calculte instead of every location.
             pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
-            int maxi = 776, mini = -1;
-            int sumTotal, minRow, maxRow, minCol, maxCol,k;
+            register int maxi = 776, mini = -1;
+            register int sumTotal, minRow, maxRow, minCol, maxCol,k;
             // sum all pixels around current pixel:
-            for (k = i-1; k <= i+1; ++k) { // for a row in src
-                //int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
-                int currLoc = LOCATION(k,j,m);
+            // for a row in src- one loop for rows- the columns checks inside (because there are only 3):
+            for (k = i-1; k <= i+1; ++k) {
+                // use define to do this calculte instead of every location:
+                register int currLoc = LOCATION(k,j,m);
+                // go local to these pixels instead of reaching from memory every time:
+                register pixel p1 =  src[currLoc-1];
+                register pixel p2 =  src[currLoc];
+                register pixel p3 =  src[currLoc+1];
 
-                sum.red += src[currLoc-1].red;
-                sum.green += src[currLoc-1].green;
-                sum.blue += src[currLoc-1].blue;
-                sumTotal = (int) (src[currLoc-1].red + src[currLoc-1].green + src[currLoc-1].blue);
+                sum.red += p1.red;
+                sum.green += p1.green;
+                sum.blue += p1.blue;
+                sumTotal = p1.red + p1.green + p1.blue;
                 if (sumTotal <= maxi) {
                     maxi = sumTotal;
                     maxRow = k, maxCol = j-1;
@@ -205,10 +120,10 @@ void smoothBlurWithFilter(pixel *src, pixel *dst) {
                     minRow = k, minCol = j-1;
                 }
 
-                sum.red += src[currLoc].red;
-                sum.green += src[currLoc].green;
-                sum.blue += src[currLoc].blue;
-                sumTotal = (int) (src[currLoc].red + src[currLoc].green + src[currLoc].blue);
+                sum.red += p2.red;
+                sum.green += p2.green;
+                sum.blue += p2.blue;
+                sumTotal = p2.red + p2.green + p2.blue;
                 if (sumTotal <= maxi) {
                     maxi = sumTotal;
                     maxRow = k, maxCol = j;
@@ -218,10 +133,10 @@ void smoothBlurWithFilter(pixel *src, pixel *dst) {
                     minRow = k, minCol = j;
                 }
 
-                sum.red += src[currLoc+1].red;
-                sum.green += src[currLoc+1].green;
-                sum.blue += src[currLoc+1].blue;
-                sumTotal = (int) (src[currLoc+1].red + src[currLoc+1].green + src[currLoc+1].blue);
+                sum.red += p3.red;
+                sum.green += p3.green;
+                sum.blue += p3.blue;
+                sumTotal = p3.red + p3.green + p3.blue;
                 if (sumTotal <= maxi) {
                     maxi = sumTotal;
                     maxRow = k, maxCol = j+1;
@@ -231,14 +146,15 @@ void smoothBlurWithFilter(pixel *src, pixel *dst) {
                     minRow = k, minCol = j+1;
                 }
             }
-            int minLoc = minRow*m +minCol;
-            int maxLoc = maxRow*m +maxCol;
-            sum.red += (-1) * src[minLoc].red;
-            sum.green += (-1) * src[minLoc].green;
-            sum.blue += (-1) * src[minLoc].blue;
-            sum.red += (-1) * src[maxLoc].red;
-            sum.green += (-1) * src[maxLoc].green;
-            sum.blue += (-1) * src[maxLoc].blue;
+            register int minLoc = minRow*m +minCol;
+            register int maxLoc = maxRow*m +maxCol;
+            // instead of duplicate in (-1)- using minus ---> (-1)*x = -x:
+            sum.red -= src[minLoc].red;
+            sum.green -= src[minLoc].green;
+            sum.blue -= src[minLoc].blue;
+            sum.red -= src[maxLoc].red;
+            sum.green -= src[maxLoc].green;
+            sum.blue -= src[maxLoc].blue;
             //divide by 7:
             dst[location].red = sum.red * 0.1428571429;
             dst[location].green = sum.green * 0.1428571429;
@@ -247,195 +163,192 @@ void smoothBlurWithFilter(pixel *src, pixel *dst) {
     }
 }
 
+/*
+* The smooth function that sharp the image (filtered or not).
+ * Optimization explanations: (1) use "register" before int/pixel to tell the computer to put this member in register
+ * and not to call it from memory every time.
+ * (2) few less arguments to this function because the others are pixed (not changing trought all project in this state-
+ * blur with no filter).
+ * (3) not using help function- to save call in assembly.
+*/
 void smoothSharpNoFilter(pixel *src, pixel *dst) {
-    int dimLoop =m-1; /// maybe in a different way
-    int i,j,k;
+    register int dimLoop =m-1; /// maybe in a different way
+    register int i,j,k;
+    // check every pixel in separate:
     for (i = 1 ; i < dimLoop; i++) {
         for (j =  1 ; j < dimLoop; j++) {
-            int location = LOCATION(i, j, m);
-            pixel_sum sum;
+            register int location = LOCATION(i, j, m); // use define to do this calculte instead of every location.
+            register pixel_sum sum;
             sum.red = 0, sum.green = 0, sum.blue = 0;
             // sum all pixels around current pixel:
+            // for a row in src- one loop for 2 rows(the first and the third)- the columns checks inside
+            // (because there are only 3)- the middle row in the matrix is checked after this loop:
             for (k = i-1; k <= i+1; k+=2) { // for a row in src-  2 rows- first and last (1,3)
-                int currLoc = LOCATION(k,j,m);
-                //int currLoc = k*m +j; //not sure about it - we can do with the func calcIndex
-                sum.red += src[currLoc-1].red;
-                sum.green += src[currLoc-1].green;
-                sum.blue +=  src[currLoc-1].blue;
+                // use define to do this calculte instead of every location:
+                register int currLoc = LOCATION(k,j,m);
+                // go local to these pixels instead of reaching from memory every time:
+                register pixel p1 =  src[currLoc-1];
+                register pixel p2 =  src[currLoc];
+                register pixel p3 =  src[currLoc+1];
+                // instead of duplicate in (-1)- using minus from zero ---> (-1)*x = -x:
+                sum.red -= p1.red;
+                sum.green -= p1.green;
+                sum.blue -=  p1.blue;
 
-                sum.red +=  src[currLoc].red;
-                sum.green +=  src[currLoc].green;
-                sum.blue +=  src[currLoc].blue;
+                sum.red -=  p2.red;
+                sum.green -=  p2.green;
+                sum.blue -=  p2.blue;
 
-                sum.red +=  src[currLoc+1].red;
-                sum.green +=  src[currLoc+1].green;
-                sum.blue +=  src[currLoc+1].blue;
+                sum.red -=  p3.red;
+                sum.green -=  p3.green;
+                sum.blue -=  p3.blue;
             }
-            // instead of duplicate every iteration in k loop:
-            sum.red *= (-1);
-            sum.green *= (-1);
-            sum.blue *= (-1);
             //add the middle row to sum:
-            int currLoc = LOCATION(i,j,m);
-            sum.red += (-1) * src[currLoc-1].red;
-            sum.green += (-1) * src[currLoc-1].green;
-            sum.blue += (-1) * src[currLoc-1].blue;
+            register int currLoc = LOCATION(i,j,m); // use define to do this calculte instead of every location.
+
+            //calculate the middle row in the matrix (because it's different from the other 2 row (in the above loop)):
+            pixel p1 =  src[currLoc-1]; // go local to these pixels instead of reaching from memory every time.
+            // instead of duplicate in (-1)- using minus from zero ---> (-1)*x = -x:
+            sum.red -= p1.red;
+            sum.green -= p1.green;
+            sum.blue -= p1.blue;
 
             sum.red += 9 * src[currLoc].red;
             sum.green += 9 * src[currLoc].green;
             sum.blue += 9 * src[currLoc].blue;
 
-            sum.red += (-1) * src[currLoc+1].red;
-            sum.green += (-1) * src[currLoc+1].green;
-            sum.blue += (-1) * src[currLoc+1].blue;
+            pixel p2 = src[currLoc+1]; // go local to these pixels instead of reaching from memory every time.
+            sum.red -= p2.red;
+            sum.green -= p2.green;
+            sum.blue -= p2.blue;
 
-            dst[location].red = (unsigned char) (min(max(sum.red, 0), 255));
-            dst[location].green = (unsigned char) (min(max(sum.green, 0), 255));
-            dst[location].blue = (unsigned char) (min(max(sum.blue, 0), 255));
+            dst[location].red = min(max(sum.red, 0), 255);
+            dst[location].green =min(max(sum.green, 0), 255);
+            dst[location].blue = min(max(sum.blue, 0), 255);
         }
     }
 }
 
-void smooth(int dim, pixel *src, pixel *dst, int kernelSize, int kernel[kernelSize][kernelSize], int kernelScale, bool filter) {
+void smooth(int dim, pixel *src, pixel *dst, int kernelSize, int kernel[kernelSize][kernelSize], int kernelScale, bool filter) {}
+void charsToPixels(Image *charsImg, pixel* pixels) {}
 
-    int i, j;
-    for (i = kernelSize / 2 ; i < dim - kernelSize / 2; i++) {
-        for (j =  kernelSize / 2 ; j < dim - kernelSize / 2 ; j++) {
-            dst[calcIndex(i, j, dim)] = applyKernel(dim, i, j, src, kernelSize, kernel, kernelScale, filter);
-        }
-    }
-}
-void charsToPixels(Image *charsImg, pixel* pixels) {
+void pixelsToChars(pixel* pixels, Image *charsImg) {}
 
-	int row, col;
-	for (row = 0 ; row < m ; row++) {
-		for (col = 0 ; col < n ; col++) {
+void copyPixels(pixel* src, pixel* dst) {}
 
-			pixels[row*n + col].red = image->data[3*row*n + 3*col];
-			pixels[row*n + col].green = image->data[3*row*n + 3*col + 1];
-			pixels[row*n + col].blue = image->data[3*row*n + 3*col + 2];
-		}
-	}
-}
+void doConvolution(Image *image, int kernelSize, int kernel[kernelSize][kernelSize], int kernelScale, bool filter) {}
 
-void pixelsToChars(pixel* pixels, Image *charsImg) {
-
-	int row, col;
-	for (row = 0 ; row < m ; row++) {
-		for (col = 0 ; col < n ; col++) {
-
-			image->data[3*row*n + 3*col] = pixels[row*n + col].red;
-			image->data[3*row*n + 3*col + 1] = pixels[row*n + col].green;
-			image->data[3*row*n + 3*col + 2] = pixels[row*n + col].blue;
-		}
-	}
-}
-
-void copyPixels(pixel* src, pixel* dst) {
-
-	int row, col;
-	for (row = 0 ; row < m ; row++) {
-		for (col = 0 ; col < n ; col++) {
-
-			dst[row*n + col].red = src[row*n + col].red;
-			dst[row*n + col].green = src[row*n + col].green;
-			dst[row*n + col].blue = src[row*n + col].blue;
-		}
-	}
-}
-
-void doConvolution(Image *image, int kernelSize, int kernel[kernelSize][kernelSize], int kernelScale, bool filter) {
-
-    pixel* pixelsImg = malloc(m*n*sizeof(pixel));
-    pixel* backupOrg = malloc(m*n*sizeof(pixel));
-
-    charsToPixels(image, pixelsImg);
-    copyPixels(pixelsImg, backupOrg);
-
-    smooth(m, backupOrg, pixelsImg, kernelSize, kernel, kernelScale, filter);
-
-    pixelsToChars(pixelsImg, image);
-
-    free(pixelsImg);
-    free(backupOrg);
-}
-
+/**
+ * we dont need this function- debug:
+ */
 void doConvolutionBlurNoFilter(Image *image) {
 
-	pixel* pixelsImg = malloc(m*n*sizeof(pixel));
-	pixel* backupOrg = malloc(m*n*sizeof(pixel));
-
-    //coping image:
-    memcpy(pixelsImg, image->data, IMG_SIZE);
-    memcpy(backupOrg, pixelsImg, IMG_SIZE);
-
-    smoothBlurNoFilter(backupOrg, pixelsImg);
-
-    memcpy(image->data, pixelsImg, IMG_SIZE);
-
-	free(pixelsImg);
-	free(backupOrg);
+//    pixel* pixelsImg = malloc(IMG_SIZE);
+//    pixel* backupOrg = malloc(IMG_SIZE);
+//
+//    //coping image:
+//    memcpy(pixelsImg, image->data, IMG_SIZE);
+//    //copyPixels(pixelsImg, backupOrg);
+//    memcpy(backupOrg, pixelsImg, IMG_SIZE);
+//
+//    smoothBlurNoFilter(backupOrg, pixelsImg);
+//
+//    memcpy(image->data, pixelsImg, IMG_SIZE);
+//
+//    free(pixelsImg);
+//    free(backupOrg);
 }
+/**
+ * we dont need this function- debug:
+ */
 void doConvolutionBlurWithFilter(Image *image) {
 
-    pixel* pixelsImg = malloc(m*n*sizeof(pixel));
-    pixel* backupOrg = malloc(m*n*sizeof(pixel));
-
-    //coping image:
-    memcpy(pixelsImg, image->data, IMG_SIZE);
-    memcpy(backupOrg, pixelsImg, IMG_SIZE);
-
-    smoothBlurWithFilter(backupOrg, pixelsImg);
-
-    memcpy(image->data, pixelsImg, IMG_SIZE);
-
-    free(pixelsImg);
-    free(backupOrg);
+//    pixel* pixelsImg = malloc(IMG_SIZE);
+//    pixel* backupOrg = malloc(IMG_SIZE);
+//
+//    //coping image:
+//    memcpy(pixelsImg, image->data, IMG_SIZE);
+//    //copyPixels(pixelsImg, backupOrg);
+//    memcpy(backupOrg, pixelsImg, IMG_SIZE);
+//
+//    smoothBlurWithFilter(backupOrg, pixelsImg);
+//
+//    memcpy(image->data, pixelsImg, IMG_SIZE);
+//
+//    free(pixelsImg);
+//    free(backupOrg);
 }
-
+/**
+ * we dont need this function- debug:
+ */
 void doConvolutionSharp(Image *image) {
-    int picSize = m*n*sizeof(pixel);
-    pixel* pixelsImg = malloc(picSize);
-    pixel* backupOrg = malloc(picSize);
-
-    //coping image:
-    memcpy(pixelsImg, image->data, IMG_SIZE);
-    memcpy(backupOrg, pixelsImg, IMG_SIZE);
-
-    smoothSharpNoFilter(backupOrg, pixelsImg);
-
-    memcpy(image->data, pixelsImg, IMG_SIZE);
-
-    free(pixelsImg);
-    free(backupOrg);
+//    pixel* pixelsImg = malloc(IMG_SIZE);
+//    pixel* backupOrg = malloc(IMG_SIZE);
+//
+//    //coping image:
+//    memcpy(pixelsImg, image->data, IMG_SIZE);
+//    //copyPixels(pixelsImg, backupOrg);
+//    memcpy(backupOrg, pixelsImg, IMG_SIZE);
+//
+//    smoothSharpNoFilter(backupOrg, pixelsImg);
+//
+//    memcpy(image->data, pixelsImg, IMG_SIZE);
+//
+//    free(pixelsImg);
+//    free(backupOrg);
 }
 
 void myfunction(Image *image, char* srcImgpName, char* blurRsltImgName, char* sharpRsltImgName,
                 char* filteredBlurRsltImgName, char* filteredSharpRsltImgName, char flag) {
+    pixel* pixelsImg = malloc(IMG_SIZE);
+    pixel* backupOrg = malloc(IMG_SIZE);
+    //coping image:
+    memcpy(pixelsImg, image->data, IMG_SIZE);
+    memcpy(backupOrg, pixelsImg, IMG_SIZE);
+
     if (flag == '1') {
-		// blur image
-		doConvolutionBlurNoFilter(image);
+        // blur image
+        smoothBlurNoFilter(backupOrg, pixelsImg);
 
-		// write result image to file
-		writeBMP(image, srcImgpName, blurRsltImgName);	
+        memcpy(image->data, pixelsImg, IMG_SIZE);
 
-		// sharpen the resulting image
-        doConvolutionSharp(image);
-		
-		// write result image to file
-		writeBMP(image, srcImgpName, sharpRsltImgName);	
-	} else {
-		// apply extermum filtered kernel to blur image
-        doConvolutionBlurWithFilter(image);
+        // write result image to file
+        writeBMP(image, srcImgpName, blurRsltImgName);
 
-		// write result image to file
-		writeBMP(image, srcImgpName, filteredBlurRsltImgName);
+        //coping image:
+        memcpy(pixelsImg, image->data, IMG_SIZE);
+        memcpy(backupOrg, pixelsImg, IMG_SIZE);
 
-		// sharpen the resulting image
-        doConvolutionSharp(image);
+        // sharpen the resulting image
+        smoothSharpNoFilter(backupOrg, pixelsImg);
 
-		// write result image to file
-		writeBMP(image, srcImgpName, filteredSharpRsltImgName);	
-	}
+        memcpy(image->data, pixelsImg, IMG_SIZE);
+
+        // write result image to file
+        writeBMP(image, srcImgpName, sharpRsltImgName);
+
+    } else {
+        //blur image
+        smoothBlurWithFilter(backupOrg, pixelsImg);
+
+        memcpy(image->data, pixelsImg, IMG_SIZE);
+
+        // write result image to file
+        writeBMP(image, srcImgpName, filteredBlurRsltImgName);
+
+        //coping image:
+        memcpy(pixelsImg, image->data, IMG_SIZE);
+        memcpy(backupOrg, pixelsImg, IMG_SIZE);
+
+        // sharpen the resulting image
+        smoothSharpNoFilter(backupOrg, pixelsImg);
+
+        memcpy(image->data, pixelsImg, IMG_SIZE);
+
+        // write result image to file
+        writeBMP(image, srcImgpName, filteredSharpRsltImgName);
+    }
+    free(pixelsImg);
+    free(backupOrg);
 }
 
